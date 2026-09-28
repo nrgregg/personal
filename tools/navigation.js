@@ -19,6 +19,13 @@ function route(){
   show(page||'home');
 }
 root.addEventListener('click',event=>{
+  const footnote=event.target.closest('a[data-footnote]');
+  if(footnote){
+    event.preventDefault();
+    const target=document.getElementById(footnote.getAttribute('href').slice(1));
+    if(target){target.setAttribute('tabindex','-1');target.focus({preventScroll:true});target.scrollIntoView({behavior:'smooth',block:'center'});}
+    return;
+  }
   const button=event.target.closest('button');if(!button)return;
   if(button.dataset.page){location.hash=button.dataset.page+(button.dataset.page==='blog'&&postSlugs.length?'/'+(button.dataset.post||postSlugs[0]):'');route();window.scrollTo({top:0,behavior:'instant'});}
   if(button.dataset.step){const next=postIndex+Number(button.dataset.step);if(next>=0&&next<postSlugs.length){location.hash='blog/'+postSlugs[next];route();window.scrollTo({top:0,behavior:'instant'});}}

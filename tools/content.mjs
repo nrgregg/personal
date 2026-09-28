@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { marked } from './vendor/marked.mjs';
+import { renderMarkdown } from './footnotes.mjs';
 
 export const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const vault = path.dirname(repo);
@@ -77,7 +78,7 @@ export function build({preview=false, output=path.join(repo,'.preview')}={}) {
   function markdown(body, toc=[]) {
     renderer.heading=function({depth,tokens}) { const id=`section-${++index}`; const text=this.parser.parseInline(tokens); toc.push({id,text,depth}); return `<h${depth} id="${id}">${text}</h${depth}>`; };
     const transformed=body.replace(/!\[\[(Images\/[^\]|]+)(?:\|([^\]]+))?\]\]/g,(_,file,alt)=>`![${alt||path.basename(file)}](<${file}>)`);
-    return marked.parse(transformed,{renderer,gfm:true});
+    return renderMarkdown(transformed,renderer,`footnotes-${++index}`);
   }
   const posts=collection('Blog Posts',preview), projects=collection('Projects',preview), readings=collection('Further Reading',preview);
   const about=read('Home/About.md'), settings=read('Home/Site.md'), highlighted=read('Home/Highlighted Post.md');
@@ -87,7 +88,7 @@ export function build({preview=false, output=path.join(repo,'.preview')}={}) {
   const featured=highlighted?.meta.post?posts.find(p=>p.meta.slug===highlighted.meta.post):posts[0];
   if(highlighted?.meta.post&&!featured) throw Error('Home/Highlighted Post.md: post must name an included post slug (or leave it blank).');
   const card=(label,post,body)=>`<article class="panel"><span class="small">${label}</span>${post?`${badge(post.meta)}<h2>${escape(post.meta.title)}</h2>${body?markdown(body):`<p>${escape(post.meta.summary)}</p>`}${postLink(post)}`:'<p>No posts published yet.</p>'}</article>`;
-  const home=`<section data-view="home"><div class="home-layout"><article class="panel bio"><span class="small">ABOUT</span><h1>${escape(about?.meta.title||'Nellie Gregg')}</h1>${markdown(about?.body||'About information is coming soon.')}</article>${card('HIGHLIGHTED POST',featured,highlighted?.body)}${card('MOST RECENT',posts[0])}</div></section>`;
+  const home=`<section data-view="home"><div class="home-layout"><article class="panel bio"><h1>${escape(about?.meta.title||'Nellie Gregg')}</h1>${markdown(about?.body||'About information is coming soon.')}</article>${card('HIGHLIGHTED POST',featured,highlighted?.body)}${card('MOST RECENT',posts[0])}</div></section>`;
   const articles=posts.map(post=>{const m=post.meta,toc=[];const body=markdown(post.body,toc);return `<div class="article-layout" data-article="${escape(m.slug)}" hidden><article class="panel article"><span class="small">RESEARCH BLOG</span>${badge(m)}<h1>${escape(m.title)}</h1>${m.subtitle?`<p class="post-subtitle">${escape(m.subtitle)}</p>`:''}<div class="small">${escape(m.author||'Nellie Gregg')} · Posted ${date(m.date)}${m.updated?' · Edited '+date(m.updated):''}</div>${m.crosspost_url?`<p>Also published at <a class="text-link" href="${escape(safeUrl(m.crosspost_url))}">${escape(m.crosspost_name||m.crosspost_url)}</a></p>`:''}<div class="line"></div><div class="article-body">${body}</div></article><aside><span class="small">ON THIS PAGE</span>${toc.map(h=>`<button class="text-link" data-section="${h.id}">${h.text}</button>`).join('')}<div class="line"></div><div class="post-navigation"><button class="post-arrow" data-step="1" aria-label="Older blog post">←</button><button class="text-link" data-page="archive">Archive</button><button class="post-arrow" data-step="-1" aria-label="Newer blog post">→</button></div></aside></div>`;}).join('');
   const panels=(view,notes,label)=>`<section data-view="${view}" hidden><div class="stack">${notes.length?notes.map(({meta:m,body})=>`<article class="panel"><span class="small">${label} · ${date(m.date)}${m.updated?' · Edited '+date(m.updated):''}</span>${badge(m)}<h2>${escape(m.title)}</h2>${m.authors?`<div class="small">${escape(m.authors)}</div>`:''}${markdown(body)}</article>`).join(''):`<article class="panel"><h1>${label}</h1><p>Nothing published yet.</p></article>`}</div></section>`;
   const main=home+`<section data-view="blog" hidden>${articles||'<article class="panel article"><h1>Research Blog</h1><p>No posts published yet.</p></article>'}</section>`+panels('projects',projects,'PROJECTS')+panels('reading',readings,'FURTHER READING · ADDED')+`<section data-view="archive" hidden><article class="panel"><h1>Archive</h1>${posts.map(p=>`<p><span class="small">${date(p.meta.date)}</span> ${postLink(p,p.meta.title)}</p>`).join('')||'<p>No posts published yet.</p>'}</article></section>`;
