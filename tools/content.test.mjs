@@ -4,7 +4,15 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
-import {repo,parse} from './content.mjs';
+import {repo,parse,excerpt} from './content.mjs';
+
+test('automatic excerpts use readable post text and end in three dots',()=>{
+  assert.equal(excerpt('**Hello** [world](https://example.com)!\n\n![Photo](Images/photo.jpg)'),'Hello world!...');
+  assert.equal(excerpt('A'.repeat(120)),'A'.repeat(100)+'...');
+  assert.equal(excerpt('Text[^note]\n\n[^note]: Hidden footnote'),'Text...');
+  assert.equal(excerpt('Fish &amp; water'),'Fish & water...');
+  assert.equal(excerpt(''),'');
+});
 
 test('properties reject malformed notes',()=>{
   assert.equal(parse('','empty'),null);
@@ -26,13 +34,30 @@ test('build includes published content, images, dates and navigation; errors pre
     write('Blog Posts/draft.md',note('Private draft','draft','2026-09-29','SECRET DRAFT BODY'));
     write('Projects/project.md',note('Project','published','2026-09-03','Project body'));
     write('Further Reading/reading.md',note('Reading','published','2026-09-02','[Source](https://example.com)'));
-    const run=()=>spawnSync(process.execPath,[path.join(target,'tools/content.mjs'),'--site'],{encoding:'utf8'});
+    write('Home/About.md','---\ntitle: Test person\nphoto: Images/example.png\nphoto_alt: Test portrait\n---\nBiography text');
+    write('Home/Tagline.md','---\ntitle: Tagline\n---\nShort descriptor');
+    write('Home/Affiliations.md','---\ntitle: Affiliations\n---\n[Affiliation](https://example.com/team)');
+    write('Home/Contacts.md','---\ntitle: Contacts\n---\n[Email](mailto:test@example.com)');
+    const run=()=>spawnSync(process.execPath,[path.join(target,'tools/content.mjs')],{encoding:'utf8'});
     assert.equal(run().status,0);
     const html=fs.readFileSync(path.join(target,'index.html'),'utf8');
     for(const content of ['<strong>Bold</strong>','<em>italic</em>','<blockquote>','Edited September 28, 2026','Summary text','Project body','https://example.com','&lt;script&gt;'])assert.ok(html.includes(content),content);
     assert.ok(!html.includes('SECRET DRAFT BODY'));
     assert.ok(html.includes('const postSlugs=["newer","older"]'));
+    for(const slug of ['newer','older']){
+      assert.ok(html.includes(`id="comments-${slug}"`));
+      assert.ok(html.includes(`class="commentbox commentbox-${slug}" id="commentbox-${slug}"`));
+      assert.ok(html.includes(`data-section="comments-${slug}">Comments</button>`));
+    }
+    assert.equal((html.match(/class="post-comments"/g)||[]).length,2);
     assert.ok(fs.existsSync(path.join(target,'assets/example.png')));
+    const about=html.match(/<article class="panel bio"[\s\S]*?<\/article>/)[0];
+    assert.ok(about.includes('>ABOUT</span>'));
+    assert.ok(about.includes('alt="Test portrait"'));
+    assert.ok(about.includes('mailto:test@example.com'));
+    const order=['about-photo','about-tagline','about-affiliations','about-bio','about-contacts'].map(name=>about.indexOf(`class="${name}"`));
+    assert.ok(order.every((position,index)=>position>=0 && (!index || position>order[index-1])));
+    for(const text of ['Short descriptor','Affiliation','Biography text'])assert.ok(about.includes(text));
     const ids=[...html.matchAll(/id="(section-\d+)"/g)].map(m=>m[1]);assert.equal(ids.length,new Set(ids).size);
     write('Blog Posts/newer.md',note('Newer','published','2026-02-30','broken'));
     assert.notEqual(run().status,0);
