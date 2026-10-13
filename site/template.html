@@ -157,9 +157,39 @@ html{scroll-behavior:smooth}body{margin:0;background:#151537}#nellie-preview{min
 #nellie-preview .portrait-placeholder{aspect-ratio:4/3;display:grid;place-items:center;background:#e7ded9;color:#485f5e;border:1px dashed #6E8988}
 #nellie-preview .about-tagline{font-size:22px;font-weight:700;line-height:1.3}
 #nellie-preview .about-affiliations{font-family:Departure,monospace;font-size:11px;line-height:1.8;color:#485f5e}
-#nellie-preview .about-bio{font-size:17px;line-height:1.65}
+#nellie-preview .about-bio{font-size:15px;font-weight:400;line-height:1.5}
 #nellie-preview .about-contacts{border-top:1px solid #6E8988;padding-top:16px;font-family:Departure,monospace;font-size:12px;line-height:1.9}
 #nellie-preview .about-contacts>.small{display:block;margin-bottom:8px}
+
+/* Let each Home column size independently, without stretching the previews. */
+#nellie-preview .home-layout{align-items:start}
+#nellie-preview .home-layout>.bio{grid-row:auto}
+#nellie-preview .home-sidebar{display:grid;gap:22px;align-content:start;min-width:0}
+#nellie-preview .home-sidebar>.post-preview{padding:22px 26px;background:#1F2254;color:#f7ece7}
+#nellie-preview .home-sidebar>.post-preview .small{color:#acbebb}
+#nellie-preview .home-sidebar>.post-preview h2{margin:10px 0}
+#nellie-preview .home-sidebar>.post-preview p{margin:10px 0 14px}
+#nellie-preview .links-panel{background:#f7ece7;color:#1e1423;border-top:5px solid var(--fish-grey,#6E8988);font-family:Departure,monospace;font-size:12px;line-height:1.9}
+#nellie-preview .links-panel .small{color:#485f5e}
+#nellie-preview .article-layout{grid-template-columns:minmax(0,1fr) 174px;justify-content:stretch}
+#nellie-preview .article-layout>.article{grid-column:1}
+#nellie-preview .article-layout>aside{grid-column:2}
+#nellie-preview .article-body{font-size:17px;font-weight:500;line-height:1.5}
+#nellie-preview .article-body :is(strong,b){font-weight:700}
+@media(max-width:760px){#nellie-preview .article-layout{grid-template-columns:minmax(0,1fr)}#nellie-preview .article-layout>aside{grid-column:1}#nellie-preview .article-body{font-size:18px}#nellie-preview .home-sidebar>.post-preview{padding:22px}}
+/* Center the article itself while retaining its previous two-column width. */
+#nellie-preview .article-layout{position:relative;width:calc(100% - 196px);margin-inline:auto;grid-template-columns:minmax(0,1fr)}
+#nellie-preview .article-layout>.article,#nellie-preview .article-layout>aside{grid-column:1}
+#nellie-preview .article-layout>aside{width:100%}
+@media(min-width:1316px){#nellie-preview .article-layout>aside{position:absolute;top:0;left:calc(100% + 22px);width:174px}}
+@media(max-width:760px){#nellie-preview .article-layout{width:100%}}
+/* Keep the sidebar in the article's grid so sticky positioning follows its height. */
+#nellie-preview .article-layout>aside{max-height:calc(100dvh - var(--visible-header-height,118px) - 66px);overflow-y:auto;overscroll-behavior-y:contain;scrollbar-width:thin}
+@media(min-width:1316px){
+  #nellie-preview .article-layout{grid-template-columns:minmax(0,1fr) 0;column-gap:0}
+  #nellie-preview .article-layout>.article{grid-column:1;grid-row:1}
+  #nellie-preview .article-layout>aside{position:sticky;grid-column:2;grid-row:1;left:auto;top:calc(var(--visible-header-height,118px) + 42px);margin-left:22px;width:174px;align-self:start}
+}
 </style>
 <div id="nellie-preview" aria-label="Personal research website mock-up">
  <div class="header-slot"><header class="masthead"><button type="button" class="fish-home" data-page="home" aria-label="Home"><img class="fish" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAgCAYAAABgrToAAAACuklEQVR4AeyVMWgUURCGZ9OktRDstQgxrdiljSBRsLWwVpAEsTCVolUsRAyC6QQLW0GDoL1NsA0xhWIrWKRJkSaX+f7bebzs7V6O2w2k2OP9b+bNzPv3f3Nv72bsnH96gW2/oL6DfQfbdqDt/rO6gwMXBty0G10LRNRg6+mcAZfG2s30o0uBEvb78wWbv/ZPiqYQyYGA9jNNIxCCOiRhEIPlF3uYgukUiI8DAa9l7cZsEoEUJ8xtPbfAysv15BO7cnvfAhOKEy9dByiq7msSqI2+YcCDgfsSg72xM2vg28KhLD5x6nJ4LPGUvps0xB3CiFbFEasKFGHlIdRJ3N7yMwlCGMEQhg9YB1jnPPgeEz+W9dej1+4Ox+7PS0OnMucCdSI28hDE/FpclCCIXm1/1NbV+XX79PC7Ye+/+yKLTw1rirDUwJMD7gD11ALE1XWPXC7QEAExCe7X6ua2LR28NwjizTxcWSBtucUHJBCHBfg54AbkwM2ZRxih+nIo6FMusOAUf+79N0g9J3v5w0VcXX5Ebz64ZU1QoU+zGzs+Dwd+1N95u2SADOKii3F44lXkAslJ5NW/PySOAHh8/S7GNp6sjUCJcgohb3bXJIQ1fpk2rk0AcYiMHLaui1WB1BU+FYgEnBhS3rYARAFEx0sT1vfr7mKJUQPYQ8xR8HMEr/sa0cWyhpdJ8TqBSvgkoUECocdO3EeuBJeeF4EctQjJQSwOhohMgPjhBdxzOKoYJzBqReQLnRpREGI9pq8tBJUPJ5z2+EL73KZR1kWXVAtfwAuJubGJ/klUWE6F2ybor45ueU083F2NJJIuIsSj8LhJg3UgBSfpYCo+xUkixols+iqbuLsUyDMkkivgC7rh5sTQr4RH6nIeHh1dC+QJPBzg12FcbqS+I4EjvJ0FeoFtW9l3sO9g2w603X8MAAD//+sQCLoAAAAGSURBVAMAfxluUAbcVIYAAAAASUVORK5CYII=" alt="Pixel-art fish"></button><div class="site-title">[insert site title]</div><nav aria-label="Primary navigation"><button data-page="home" aria-current="page">Home</button><button data-page="blog">Research Blog</button><button data-page="projects">Projects</button><button data-page="reading">Further Reading</button></nav></header></div>
@@ -194,12 +224,14 @@ function updateHeader(){
   headerFrame=null;
   const progress=Math.min(1,Math.max(0,window.scrollY)/120);
   headerSlot.style.setProperty('--collapse',String(progress));
+  root.style.setProperty('--visible-header-height',`${headerSlot.querySelector('.masthead').getBoundingClientRect().height}px`);
   headerTitle.style.visibility=progress===1?'hidden':'visible';
 }
 window.addEventListener('scroll',()=>{
   if(headerFrame===null)headerFrame=requestAnimationFrame(updateHeader);
 },{passive:true});
 updateHeader();
+window.addEventListener('resize',updateHeader);
 show('home');
 })();
 </script>

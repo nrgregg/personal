@@ -37,7 +37,8 @@ test('build includes published content, images, dates and navigation; errors pre
     write('Home/About.md','---\ntitle: Test person\nphoto: Images/example.png\nphoto_alt: Test portrait\n---\nBiography text');
     write('Home/Tagline.md','---\ntitle: Tagline\n---\nShort descriptor');
     write('Home/Affiliations.md','---\ntitle: Affiliations\n---\n[Affiliation](https://example.com/team)');
-    write('Home/Contacts.md','---\ntitle: Contacts\n---\n[Email](mailto:test@example.com)');
+    write('Home/Links.md','---\ntitle: Contacts\n---\n[Email](mailto:test@example.com)');
+    write('Home/Site.md','---\ntitle: Test site\ncommentbox_project: test-project\n---\n');
     const run=()=>spawnSync(process.execPath,[path.join(target,'tools/content.mjs')],{encoding:'utf8'});
     assert.equal(run().status,0);
     const html=fs.readFileSync(path.join(target,'index.html'),'utf8');
@@ -48,14 +49,17 @@ test('build includes published content, images, dates and navigation; errors pre
       assert.ok(html.includes(`id="comments-${slug}"`));
       assert.ok(html.includes(`class="commentbox commentbox-${slug}" id="commentbox-${slug}"`));
       assert.ok(html.includes(`data-section="comments-${slug}">Comments</button>`));
+      assert.ok(html.includes(`aria-labelledby="comments-heading-${slug}"`));
     }
     assert.equal((html.match(/class="post-comments"/g)||[]).length,2);
+    assert.ok(html.includes('const commentBoxProject="test-project"'));
     assert.ok(fs.existsSync(path.join(target,'assets/example.png')));
     const about=html.match(/<article class="panel bio"[\s\S]*?<\/article>/)[0];
     assert.ok(about.includes('>ABOUT</span>'));
     assert.ok(about.includes('alt="Test portrait"'));
-    assert.ok(about.includes('mailto:test@example.com'));
-    const order=['about-photo','about-tagline','about-affiliations','about-bio','about-contacts'].map(name=>about.indexOf(`class="${name}"`));
+    assert.ok(!about.includes('mailto:test@example.com'));
+    assert.match(html,/<article class="panel links-panel">[\s\S]*?mailto:test@example.com[\s\S]*?<\/article>/);
+    const order=['about-photo','about-tagline','about-affiliations','about-bio'].map(name=>about.indexOf(`class="${name}"`));
     assert.ok(order.every((position,index)=>position>=0 && (!index || position>order[index-1])));
     for(const text of ['Short descriptor','Affiliation','Biography text'])assert.ok(about.includes(text));
     const ids=[...html.matchAll(/id="(section-\d+)"/g)].map(m=>m[1]);assert.equal(ids.length,new Set(ids).size);

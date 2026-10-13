@@ -6,17 +6,21 @@ function loadComments(){
   const box=article?.querySelector('.commentbox');
   if(!box||mountedComments.has(box))return;
   const status=article.querySelector('[data-comment-status]');
+  if(location.protocol==='file:'){
+    status.textContent='Comments are available on the published website.';
+    return;
+  }
   status.textContent='Loading comments…';
   if(!commentScript)commentScript=new Promise((resolve,reject)=>{
     const script=document.createElement('script');
-    script.src='https://unpkg.com/commentbox.io/dist/commentBox.min.js';
+    script.src='https://unpkg.com/commentbox.io@0.9.16/dist/commentBox.min.js';
     script.onload=resolve;
     script.onerror=()=>{script.remove();commentScript=null;reject(new Error('Comments unavailable'));};
     document.head.append(script);
   });
   commentScript.then(()=>{
     if(article.hidden||root.querySelector('[data-view="blog"]').hidden||mountedComments.has(box))return;
-    window.commentBox('5643378645532672-proj',{
+    window.commentBox(commentBoxProject,{
       className:'commentbox-'+article.dataset.article,
       textColor:'#1e1423',
       subtextColor:'#485f5e',
