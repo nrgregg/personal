@@ -55,7 +55,7 @@ function collection(folder) {
   }).sort((a,b)=>b.meta.date.localeCompare(a.meta.date)||a.meta.slug.localeCompare(b.meta.slug));
 }
 function safeUrl(href) {
-  return /^(https?:|mailto:|#)/i.test(href) ? href : '';
+  return /^(https?:|mailto:|#)/i.test(href) || /^projects\/[a-z0-9_-]+\.html$/i.test(href) ? href : '';
 }
 
 export function excerpt(body, limit=100) {
@@ -76,6 +76,8 @@ export function excerpt(body, limit=100) {
 }
 
 export function build({output=repo}={}) {
+  const template=fs.readFileSync(path.join(repo,'site/template.html'),'utf8');
+  const projectLayout=template.match(/<template id="project-content">([\s\S]*?)<\/template>/)?.[1];
   const assets = new Map();
   const renderer = new marked.Renderer();
   renderer.html = ({text}) => escape(text);
@@ -111,9 +113,18 @@ export function build({output=repo}={}) {
   const portrait=photo?renderer.image({href:photo,text:about.meta.photo_alt||about.meta.title||'Portrait'}):'<div class="portrait-placeholder">[insert photo]</div>';
   const home=`<section data-view="home"><div class="home-layout"><article class="panel bio" aria-label="${escape(about?.meta.title||'About me')}"><span class="small">ABOUT</span><div class="about-photo">${portrait}</div><div class="about-tagline">${aboutPart('Tagline','[insert tagline or descriptor]')}</div><div class="about-affiliations">${aboutPart('Affiliations','[insert affiliations]')}</div><div class="about-bio">${markdown(about?.body.trim()||'[insert bio]')}</div></article><div class="home-sidebar">${card('HIGHLIGHTED POST',featured,highlighted?.body)}${card('MOST RECENT',posts[0])}<article class="panel links-panel"><span class="small">LINKS</span>${markdown(read('Home/Links.md')?.body.trim()||'[insert links]')}</article></div></div></section>`;
   const articles=posts.map(post=>{const m=post.meta,toc=[];const body=markdown(post.body,toc);const comments=commentBoxProject?`<section class="post-comments" id="comments-${escape(m.slug)}" aria-labelledby="comments-heading-${escape(m.slug)}"><div class="line"></div><h2 id="comments-heading-${escape(m.slug)}">Comments</h2><p class="small" data-comment-status role="status"></p><div class="commentbox commentbox-${escape(m.slug)}" id="commentbox-${escape(m.slug)}"></div><noscript>Enable JavaScript to read and leave comments.</noscript></section>`:'';const commentsLink=commentBoxProject?`<div class="line"></div><button class="text-link" data-section="comments-${escape(m.slug)}">Comments</button>`:'';return `<div class="article-layout" data-article="${escape(m.slug)}" hidden><article class="panel article"><span class="small">RESEARCH BLOG</span><h1>${escape(m.title)}</h1>${m.subtitle?`<p class="post-subtitle">${escape(m.subtitle)}</p>`:''}<div class="small">${escape(m.author||'Nellie Gregg')} · Posted ${date(m.date)}${m.updated?' · Edited '+date(m.updated):''}</div>${m.crosspost_url?`<p>Also published at <a class="text-link" href="${escape(safeUrl(m.crosspost_url))}">${escape(m.crosspost_name||m.crosspost_url)}</a></p>`:''}<div class="line"></div><div class="article-body">${body}</div>${comments}</article><aside><span class="small">ON THIS PAGE</span>${toc.map(h=>`<button class="text-link" data-section="${h.id}">${h.text}</button>`).join('')}${commentsLink}<div class="line"></div><div class="post-navigation"><button class="post-arrow" data-step="1" aria-label="Older blog post">←</button><button class="text-link" data-page="archive">Archive</button><button class="post-arrow" data-step="-1" aria-label="Newer blog post">→</button></div></aside></div>`;}).join('');
-  const panels=(view,notes,label)=>`<section data-view="${view}" hidden><div class="stack">${notes.length?notes.map(({meta:m,body})=>`<article class="panel"><span class="small">${label} · ${date(m.date)}${m.updated?' · Edited '+date(m.updated):''}</span><h2>${escape(m.title)}</h2>${m.authors?`<div class="small">${escape(m.authors)}</div>`:''}${markdown(body)}</article>`).join(''):`<article class="panel"><h1>${label}</h1><p>Nothing published yet.</p></article>`}</div></section>`;
+  function panelBody(view,m,body){
+    const content=markdown(body);
+    if(view!=='projects'||!m.thumbnail?.trim())return content;
+    if(!projectLayout)throw Error('site/template.html: missing project-content template.');
+    const value=m.thumbnail.trim();
+    const href=/^(https?:|(?:\.\.\/)?Images\/)/i.test(value)?value:`Images/${value}`;
+    const thumbnail=renderer.image({href,text:m.thumbnail_alt||m.title});
+    return projectLayout.replace(/\{\{(thumbnail|body)\}\}/g,(_,field)=>field==='thumbnail'?thumbnail:content);
+  }
+  const panels=(view,notes,label)=>`<section data-view="${view}" hidden><div class="stack">${notes.length?notes.map(({meta:m,body})=>`<article class="panel"><span class="small">${label} · ${date(m.date)}${m.updated?' · Edited '+date(m.updated):''}</span><h2>${escape(m.title)}</h2>${m.authors?`<div class="small">${escape(m.authors)}</div>`:''}${panelBody(view,m,body)}</article>`).join(''):`<article class="panel"><h1>${label}</h1><p>Nothing published yet.</p></article>`}</div></section>`;
   const main=home+`<section data-view="blog" hidden>${articles||'<article class="panel article"><h1>Research Blog</h1><p>No posts published yet.</p></article>'}</section>`+panels('projects',projects,'PROJECTS')+panels('reading',readings,'FURTHER READING · ADDED')+`<section data-view="archive" hidden><article class="panel"><h1>Archive</h1>${posts.map(p=>`<p><span class="small">${date(p.meta.date)}</span> ${postLink(p,p.meta.title)}</p>`).join('')||'<p>No posts published yet.</p>'}</article></section>`;
-  let html=fs.readFileSync(path.join(repo,'site/template.html'),'utf8');
+  let html=template.replace(/<template id="project-content">[\s\S]*?<\/template>/,'');
   html=html.replace(/<main>[\s\S]*?<\/main>/,()=>`<main>${main}</main>`);
   html=html.replace(/let postIndex=2;[\s\S]*?const headerSlot=/,()=>`const postSlugs=${JSON.stringify(posts.map(p=>p.meta.slug))};\nconst commentBoxProject=${JSON.stringify(commentBoxProject)};\n${fs.readFileSync(path.join(repo,'tools/navigation.js'),'utf8')}\nconst headerSlot=`);
   html=html.replace("show('home');",'route();');
